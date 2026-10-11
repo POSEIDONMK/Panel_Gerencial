@@ -500,7 +500,12 @@ function abrirPdf(numero, msg){
   var w = window.open('', '_blank');
   if (msg) { msg.className='msg'; msg.textContent='Abriendo el PDF…'; }
   api('contrato_pdf', { contrato: numero }).then(function(r){
-    if (r && r.ok === true && safeUrl(r.url)) { if (w) w.location = r.url; else window.location = r.url; if (msg) { msg.className='msg ok'; msg.textContent='PDF abierto. El link dura 5 minutos.'; } }
+    if (r && r.ok === true && typeof r.html === 'string' && r.html) {
+      var blobUrl = URL.createObjectURL(new Blob([r.html], { type: 'text/html;charset=utf-8' }));
+      if (w) w.location = blobUrl; else window.location = blobUrl;
+      if (msg) { msg.className='msg ok'; msg.textContent='Contrato abierto (así lo recibe el cliente).'; }
+    }
+    else if (r && r.ok === true && safeUrl(r.url)) { if (w) w.location = r.url; else window.location = r.url; if (msg) { msg.className='msg ok'; msg.textContent='PDF abierto. El link dura 5 minutos.'; } }
     else { if (w) w.close(); var tx = limpio((r && r.mensaje) || 'No se pudo abrir el PDF.'); if (msg) { msg.className='msg'; msg.textContent = tx; } else alert(tx); }
   });
 }
