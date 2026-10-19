@@ -179,6 +179,7 @@ th{border-bottom-color:var(--navy)}
 .pill.gold{background:#FFF1D1;color:#7A4B00}
 .sn{font-size:13px;color:var(--ink2)}
 .seg{display:inline-flex;gap:6px;align-items:center}
+.bigbtns{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:16px}.bigbtn{border:0;border-radius:12px;padding:18px 20px;color:#fff;font-size:17px;font-weight:700;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:4px}.bigbtn small{font-size:13px;font-weight:500;opacity:.9}.bigbtn.gas{background:#C2620A}.bigbtn.ing{background:#0A6CE0}.bigbtn:hover{filter:brightness(1.08)}.scrollx{overflow-x:auto}.scrollx table{min-width:860px}
 .docs{margin-top:22px}.docs h3{margin:0 0 6px}.docrow{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line,#E6ECEA)}.docrow .tt{font-weight:600}.docrow .dd{font-size:13px;opacity:.8}.btn.sm{padding:6px 10px;font-size:13px;text-decoration:none;white-space:nowrap}
 .lnk{border:0;background:transparent;color:var(--teal-d);font-weight:600;padding:0;text-decoration:underline;text-underline-offset:2px}
 @media (max-width:860px){
@@ -232,7 +233,7 @@ var LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACgCAYAAACLz2ctAACj
 'use strict';
 var API = 'https://mkposeidon.com/webhook/contrato';
 var DEMO = location.hash === '#demo';
-var CLAVE = '', QUIEN = 'Alejandro', D = null, VISTA = 'inicio', FILTRO = 'abiertos', BUSCA = '', PERIODO = 3, TIPO_MOV = 'todos', VER_GASTOS = false, BUSCA_G = '', MES_G = 'todos';
+var CLAVE = '', QUIEN = 'Alejandro', D = null, VISTA = 'inicio', FILTRO = 'abiertos', BUSCA = '', PERIODO = 3, TIPO_MOV = 'todos', VER_GASTOS = false, VER_TIPO = 'gasto', BUSCA_G = '', MES_G = 'todos';
 
 var ESTADOS = [
   ['requerimiento_recibido','Requerimiento'],['propuesta_en_elaboracion','Propuesta en elaboración'],['propuesta_enviada','Propuesta enviada'],
@@ -354,7 +355,7 @@ function enlazar(){
   $$('#main [data-dborr]').forEach(function(el){ el.addEventListener('click', function(){ abrirPdf(null, null, el.dataset.dborr); }); });
   $$('[data-pdf]').forEach(function(el){ el.addEventListener('click', function(){ abrirPdf(el.dataset.pdf, null); }); });
   var tg = $('#tgPruebas'); if (tg) tg.addEventListener('click', function(){ VER_PRUEBAS = !VER_PRUEBAS; pintar(); });
-  var vg = $('#verGastos'); if (vg) vg.addEventListener('click', function(){ VER_GASTOS = true; pintar(); window.scrollTo(0,0); });
+  $$('[data-vermov]').forEach(function(el){ el.addEventListener('click', function(){ VER_GASTOS = true; VER_TIPO = el.dataset.vermov; BUSCA_G = ''; MES_G = 'todos'; pintar(); window.scrollTo(0,0); }); });
   var vf = $('#volverFin'); if (vf) vf.addEventListener('click', function(){ VER_GASTOS = false; pintar(); });
   var bg = $('#buscaG'); if (bg) bg.addEventListener('input', function(){ BUSCA_G = bg.value; var pos = bg.selectionStart; pintar(); var n = $('#buscaG'); if (n) { n.focus(); try { n.setSelectionRange(pos,pos); } catch(e){} } });
   var mg = $('#mesG'); if (mg) mg.addEventListener('change', function(){ MES_G = mg.value; pintar(); });
@@ -566,7 +567,7 @@ var C_ING = '#0A6CE0', C_GAS = '#E07B00';
 function vFinanzas(){
   var h = '<h2 class="sec">Finanzas</h2><p class="sub">Ingresos y gastos confirmados de Poseidón.</p>';
   if (!D.transacciones) return h + '<p class="empty">No se pudo leer la tabla de movimientos'+(D.error_finanzas?' ('+esc(D.error_finanzas)+')':'')+'. El resto del panel sigue funcionando.</p>';
-  if (VER_GASTOS) return vGastos();
+  if (VER_GASTOS) return vMovs(VER_TIPO);
   var ms = meses(6), ing = ms.map(function(m){return sumaMes('ingreso',m);}), gas = ms.map(function(m){return sumaMes('gasto',m);});
   h += '<div class="kpis">'+
     kpi('Ingresos del mes', usd(ing[5]), 'vs '+usd(ing[4])+' el mes pasado')+
@@ -575,8 +576,9 @@ function vFinanzas(){
     kpi('Link de pago sin pagar', String(D.transacciones.filter(function(t){return t.estado==='pendiente' && t.tipo==='ingreso';}).length), 'pendientes de confirmar')+'</div>';
   var tI = trans().filter(function(t){return t.tipo==='ingreso';}).reduce(function(a,t){return a+(Number(t.monto)||0);},0);
   var tG = trans().filter(function(t){return t.tipo==='gasto';}).reduce(function(a,t){return a+(Number(t.monto)||0);},0);
+  var nI = trans().filter(function(t){return t.tipo==='ingreso';}).length;
   var nG = trans().filter(function(t){return t.tipo==='gasto';}).length;
-  h += '<div class="block"><h3>Balance general</h3><div class="kpis">'+kpi('Ingresos totales', usd(tI), 'desde el inicio','pos')+kpi('Gastos totales', usd(tG), nG+' gastos registrados')+kpi('Balance', usd(tI-tG), tI-tG>=0?'a favor':'en contra', tI-tG>=0?'pos':'neg')+'</div><div class="fchips" style="margin-top:12px"><button class="chip" id="verGastos" type="button">Revisar todos los gastos ('+nG+')</button></div></div>';
+  h += '<div class="block"><h3>Balance general</h3><div class="kpis">'+kpi('Ingresos totales', usd(tI), 'desde el inicio','pos')+kpi('Gastos totales', usd(tG), nG+' gastos registrados')+kpi('Balance', usd(tI-tG), tI-tG>=0?'a favor':'en contra', tI-tG>=0?'pos':'neg')+'</div><div class="bigbtns"><button class="bigbtn gas" data-vermov="gasto" type="button">Revisar todos los gastos<small>'+nG+' registrados · '+usd(tG)+'</small></button><button class="bigbtn ing" data-vermov="ingreso" type="button">Revisar todos los ingresos<small>'+nI+' registrados · '+usd(tI)+'</small></button></div></div>';
   h += '<div class="block"><h3>Últimos 6 meses</h3><div class="legend"><span><i style="background:'+C_ING+'"></i>Ingresos</span><span><i style="background:'+C_GAS+'"></i>Gastos</span></div>'+barras(ms, ing, gas)+
     '<details class="tv"><summary>Ver como tabla</summary><table><thead><tr><th>Mes</th><th class="r">Ingresos</th><th class="r">Gastos</th><th class="r">Resultado</th></tr></thead><tbody>'+ms.map(function(m,i){return '<tr><td>'+mesTxt(m)+'</td><td class="r num">'+usd(ing[i])+'</td><td class="r num">'+usd(gas[i])+'</td><td class="r num">'+usd(ing[i]-gas[i])+'</td></tr>';}).join('')+'</tbody></table></details></div>';
   var per = [[1,'Este mes'],[3,'3 meses'],[12,'12 meses']];
@@ -591,17 +593,20 @@ function vFinanzas(){
     return '<tr><td class="num">'+esc(String(t.fecha||'').slice(8,10)+'/'+String(t.fecha||'').slice(5,7))+'</td><td>'+esc(t.descripcion||t.subcategoria||'—')+(t.estado!=='confirmado'?' <span class="pill warn">'+esc(t.estado)+'</span>':'')+'<br><span class="tag">'+esc(t.cliente||t.proveedor||'')+'</span></td><td class="hide-s">'+esc(t.categoria||'—')+'</td><td class="r num '+(esI?'pos':'neg')+'">'+(esI?'+':'−')+usd(t.monto,true)+'</td></tr>'; }).join('')+'</tbody></table>' : '<p class="empty">Sin movimientos.</p>';
   return h + '</div>';
 }
-function vGastos(){
-  var todos = trans().filter(function(t){return t.tipo==='gasto';});
+function vMovs(tipo){
+  var esI = tipo==='ingreso', NOMT = esI?'ingresos':'gastos';
+  var todos = trans().filter(function(t){return t.tipo===tipo;});
   var mk = {}; todos.forEach(function(t){ mk[String(t.fecha||'').slice(0,7)] = 1; });
   var keys = Object.keys(mk).sort().reverse();
   var q = BUSCA_G.trim().toLowerCase();
-  var lista = todos.filter(function(t){ return (MES_G==='todos' || String(t.fecha||'').slice(0,7)===MES_G) && (!q || [t.descripcion,t.categoria,t.subcategoria,t.proveedor,t.registrado_por].join(' ').toLowerCase().indexOf(q)>=0); });
+  var lista = todos.filter(function(t){ return (MES_G==='todos' || String(t.fecha||'').slice(0,7)===MES_G) && (!q || [t.descripcion,t.categoria,t.subcategoria,t.proveedor,t.cliente,t.metodo_pago,t.numero_factura,t.registrado_por].join(' ').toLowerCase().indexOf(q)>=0); });
   var tot = lista.reduce(function(a,t){return a+(Number(t.monto)||0);},0);
-  var h = '<div class="fchips"><button class="chip" id="volverFin" type="button">← Volver a Finanzas</button></div><h2 class="sec">Todos los gastos</h2><p class="sub">Los gastos registrados desde WhatsApp, tal como están en la base de datos.</p>';
-  h += '<div class="kpis">'+kpi('Total mostrado', usd(tot), lista.length+' gastos')+'</div>';
-  h += '<div class="tools" style="margin-top:14px"><input id="buscaG" type="search" placeholder="Buscar por detalle, categoría o proveedor" value="'+esc(BUSCA_G)+'" aria-label="Buscar gasto"> <select id="mesG" aria-label="Mes"><option value="todos">Todos los meses</option>'+keys.map(function(k){return '<option value="'+k+'"'+(k===MES_G?' selected':'')+'>'+mesTxt(k)+'</option>';}).join('')+'</select></div>';
-  h += lista.length ? '<table><thead><tr><th>Fecha</th><th>Detalle</th><th class="hide-s">Categoría</th><th class="hide-s">Registró</th><th class="r">Monto</th></tr></thead><tbody>'+lista.map(function(t){ return '<tr><td class="num">'+esc(String(t.fecha||'').slice(8,10)+'/'+String(t.fecha||'').slice(5,7)+'/'+String(t.fecha||'').slice(2,4))+'</td><td>'+esc(t.descripcion||t.subcategoria||'—')+'<br><span class="tag">'+esc(t.proveedor||'')+'</span></td><td class="hide-s">'+esc(t.categoria||'')+(t.subcategoria?'<br><span class="tag">'+esc(t.subcategoria)+'</span>':'')+'</td><td class="hide-s sn">'+esc(t.registrado_por||'')+'</td><td class="r num">'+usd(t.monto,true)+'</td></tr>'; }).join('')+'</tbody></table>' : '<p class="empty">No hay gastos con ese filtro.</p>';
+  var h = '<div class="fchips"><button class="chip" id="volverFin" type="button">← Volver a Finanzas</button></div><h2 class="sec">Todos los '+NOMT+'</h2><p class="sub">'+(esI?'Los ingresos confirmados':'Los gastos registrados desde WhatsApp')+', tal como están en la base de datos.</p>';
+  h += '<div class="kpis">'+kpi('Total mostrado', usd(tot), lista.length+' '+NOMT, esI?'pos':'')+'</div>';
+  h += '<div class="tools" style="margin-top:14px"><input id="buscaG" type="search" placeholder="Buscar por detalle, '+(esI?'cliente':'proveedor')+', factura o método" value="'+esc(BUSCA_G)+'" aria-label="Buscar"> <select id="mesG" aria-label="Mes"><option value="todos">Todos los meses</option>'+keys.map(function(k){return '<option value="'+k+'"'+(k===MES_G?' selected':'')+'>'+mesTxt(k)+'</option>';}).join('')+'</select></div>';
+  h += lista.length ? '<div class="scrollx"><table><thead><tr><th>Fecha</th><th>Detalle</th><th>'+(esI?'Cliente':'Proveedor')+'</th><th>Categoría</th><th>Método de pago</th><th>N.º factura</th><th>Comprobante</th><th class="hide-s">Registró</th><th class="r">Monto</th></tr></thead><tbody>'+lista.map(function(t){
+    var comp = safeUrl(t.url_comprobante) ? '<a href="'+esc(t.url_comprobante)+'" target="_blank" rel="noopener">Ver comprobante</a>' : '<span class="tag">'+(t.tiene_comprobante?'sin link':'—')+'</span>';
+    return '<tr><td class="num">'+esc(String(t.fecha||'').slice(8,10)+'/'+String(t.fecha||'').slice(5,7)+'/'+String(t.fecha||'').slice(2,4))+'</td><td>'+esc(t.descripcion||t.subcategoria||'—')+(t.es_recurrente?' <span class="pill gold">'+esc(t.frecuencia||'recurrente')+'</span>':'')+'</td><td>'+esc((esI?t.cliente:t.proveedor)||'—')+'</td><td>'+esc(t.categoria||'—')+(t.subcategoria?'<br><span class="tag">'+esc(t.subcategoria)+'</span>':'')+'</td><td>'+esc(t.metodo_pago||'—')+'</td><td>'+esc(t.numero_factura||'—')+'</td><td>'+comp+'</td><td class="hide-s sn">'+esc(t.registrado_por||'')+'</td><td class="r num">'+usd(t.monto,true)+'</td></tr>'; }).join('')+'</tbody></table></div>' : '<p class="empty">No hay '+NOMT+' con ese filtro.</p>';
   return h;
 }
 function barras(ms, a, b){
