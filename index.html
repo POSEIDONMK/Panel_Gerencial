@@ -448,12 +448,12 @@ function fichaHtml(c){
   function paso(titulo, hecho, detalle, esActual){ return '<li class="'+(hecho?'done':esActual?'now':'todo')+'"><span class="pt">'+(hecho?'✓':'')+'</span><div><div class="tt">'+esc(titulo)+'</div><div class="dd">'+detalle+'</div></div></li>'; }
   var tieneReq = !!(c.req_codigo || c.req_url);
   var pasos = '';
-  pasos += paso('Requerimiento', tieneReq || r>=0, esc(c.req_codigo||'Recibido')+enlace(c.req_url,'ver'), c.estado==='requerimiento_recibido');
-  pasos += paso('Propuesta', !!c.propuesta_enviada_en || r>=2, c.propuesta_enviada_en ? 'Enviada '+esc(cuando(c.propuesta_enviada_en))+enlace(c.propuesta_url,'abrir propuesta') : (c.estado==='propuesta_en_elaboracion'?'En elaboración':'Pendiente'), c.estado==='propuesta_en_elaboracion'||c.estado==='propuesta_enviada');
+  pasos += paso('Requerimiento', tieneReq || r>=0, esc(c.req_codigo||'Recibido')+(safeUrl(c.req_url)?enlace(c.req_url,'ver requerimiento'):' <span class="tag">sin link guardado</span>'), c.estado==='requerimiento_recibido');
+  pasos += paso('Propuesta', !!c.propuesta_enviada_en || r>=2, (c.propuesta_enviada_en ? 'Enviada '+esc(cuando(c.propuesta_enviada_en)) : (c.estado==='propuesta_en_elaboracion'?'En elaboración':(c.propuesta_url?'Disponible':'Pendiente')))+enlace(c.propuesta_url,'abrir propuesta'), c.estado==='propuesta_en_elaboracion'||c.estado==='propuesta_enviada');
   pasos += paso('Reunión', r>=3 || !!c.reunion_fecha, c.reunion_fecha ? esc(cuando(c.reunion_fecha)) : 'Sin reunión registrada', c.estado==='reunion_agendada');
   pasos += paso('Proforma', r>=4 || !!c.proforma_numero, c.proforma_numero ? esc(c.proforma_numero)+' · '+usd(c.proforma_total,true)+' + IVA'+enlace(c.proforma_url,'abrir proforma') : 'Pendiente', c.estado==='proforma_enviada');
   pasos += paso('Pago', !!c.pago_confirmado_en, c.pago_confirmado_en ? 'Confirmado '+esc(cuando(c.pago_confirmado_en)) : 'Sin pago confirmado', false);
-  pasos += paso('Contrato', !!ct && ct.estado==='firmado', ct ? esc(ct.numero)+' · '+esc(textoContrato(ct))+(ct.copia_pdf?' · copia PDF lista':'')+(ct.modo_prueba?' · de prueba':'') : 'Aún no se crea', c.estado==='contrato_enviado'||c.estado==='contrato_firmado');
+  pasos += paso('Contrato', !!ct && ct.estado==='firmado', ct ? esc(ct.numero)+' · '+esc(textoContrato(ct))+(ct.copia_pdf?' · copia PDF lista':'')+(ct.modo_prueba?' · de prueba':'')+' <button class="lnk" id="stPdf" type="button">'+(ct.estado==='firmado'?'ver firmado':'ver contrato enviado')+'</button>' : 'Aún no se crea', c.estado==='contrato_enviado'||c.estado==='contrato_firmado');
   pasos += paso('Cliente activo', c.estado==='activo', c.estado==='activo' ? 'Servicio en marcha' : 'Cuando haya pago y las dos firmas', false);
   var h = '<div class="f-top"><div><h2>'+esc(c._nombre)+'</h2>'+pillEstado(c.estado)+' <span class="tag">'+esc(c.codigo)+' · '+c._dias+' d en este estado'+(c.telefono?' · '+esc(c.telefono):'')+'</span></div><button class="x" id="fx" aria-label="Cerrar">×</button></div>';
   if (cerrado) h += '<p class="dd" style="margin-top:14px">Caso cerrado'+(c.motivo_cierre?': '+esc(c.motivo_cierre):'')+'.</p>';
@@ -461,6 +461,7 @@ function fichaHtml(c){
   h += '<ol class="steps">'+pasos+'</ol>';
   h += '<div class="acts"><h3>Acciones</h3>';
   h += '<div class="line"><select id="acEstado" aria-label="Nuevo estado"><option value="">Cambiar estado a…</option>'+CAMBIABLES.filter(function(x){return x[0]!==c.estado;}).map(function(x){return '<option value="'+x[0]+'">'+esc(x[1])+'</option>';}).join('')+'</select><input type="text" id="acMotivo" placeholder="Motivo (si lo cierras)" maxlength="200" aria-label="Motivo"></div>';
+  h += '<div class="line"><button class="btn ghost" id="acBorr" type="button">Ver último borrador generado</button></div>';
   if (ct && ct.tiene_pdf) h += '<div class="line"><button class="btn ghost" id="acPdf" type="button">Ver PDF del contrato '+esc(ct.numero)+(ct.estado==='firmado'?' (firmado)':' (borrador)')+'</button></div>';
   if (ct && (ct.estado==='enviado' || ct.estado==='firmado_cliente')) h += '<div class="line"><button class="btn ghost" id="acReenviar" type="button">Reenviar link del contrato ('+esc(ct.numero)+')</button></div>';
   h += '<div class="line"><input type="password" id="acClave" autocomplete="new-password" placeholder="Clave de equipo para confirmar" aria-label="Clave de equipo"><button class="btn" id="acAplicar" type="button">Aplicar</button></div>';
@@ -487,6 +488,8 @@ function enlazarFicha(c){
     api('estado', { caso: c.codigo, estado: est, motivo: mot }).then(function(r){ CLAVE = prev; fin(r, 'Listo: ahora está en "'+NOM[est]+'".'); });
   });
   var pb = $('#acPdf'); if (pb) pb.addEventListener('click', function(){ abrirPdf(c._ct.numero, msg); });
+  var sp = $('#stPdf'); if (sp) sp.addEventListener('click', function(){ abrirPdf(c._ct.numero, msg); });
+  var bb = $('#acBorr'); if (bb) bb.addEventListener('click', function(){ abrirPdf(null, msg, c.codigo); });
   var rb = $('#acReenviar');
   if (rb) rb.addEventListener('click', function(){
     var k = pedirClave(); if (!k) return;
@@ -496,10 +499,10 @@ function enlazarFicha(c){
     api('reenviar', { contrato: c._ct.numero }).then(function(r){ CLAVE = prev; fin(r, 'Link nuevo enviado a '+(r && r.enviado_a ? r.enviado_a : 'la persona que falta')+'.'); });
   });
 }
-function abrirPdf(numero, msg){
+function abrirPdf(numero, msg, caso){
   var w = window.open('', '_blank');
   if (msg) { msg.className='msg'; msg.textContent='Abriendo el PDF…'; }
-  api('contrato_pdf', { contrato: numero }).then(function(r){
+  (caso ? api('borrador_ultimo', { caso: caso }) : api('contrato_pdf', { contrato: numero })).then(function(r){
     if (r && r.ok === true && typeof r.html === 'string' && r.html) {
       var blobUrl = URL.createObjectURL(new Blob([r.html], { type: 'text/html;charset=utf-8' }));
       if (w) w.location = blobUrl; else window.location = blobUrl;
@@ -534,7 +537,7 @@ function vContratos(){
       '<td class="hide-s sn">Cliente '+(c.firmado_cliente_en?'✓':'—')+' · Poseidón '+(c.firmado_equipo_en?'✓':'—')+'</td>'+
       '<td class="hide-s sn">'+esc(cuando(c.created_at).split(' · ')[0])+'</td>'+
       '<td class="r num">'+(c.total!=null?usd(c.total,true):'—')+'</td>'+
-      '<td class="r">'+(c.tiene_pdf?'<button class="lnk" data-pdf="'+esc(c.numero)+'">'+(c.estado==='firmado'?'Ver firmado':'Ver borrador')+'</button>':'<span class="tag">—</span>')+'</td></tr>';
+      '<td class="r">'+'<button class="lnk" data-pdf="'+esc(c.numero)+'">'+(c.estado==='firmado'?'Ver firmado':'Ver contrato')+'</button>'+'</td></tr>';
   }).join('')+'</tbody></table>';
   return h;
 }
