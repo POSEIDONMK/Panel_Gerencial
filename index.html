@@ -179,6 +179,7 @@ th{border-bottom-color:var(--navy)}
 .pill.gold{background:#FFF1D1;color:#7A4B00}
 .sn{font-size:13px;color:var(--ink2)}
 .seg{display:inline-flex;gap:6px;align-items:center}
+.docs{margin-top:22px}.docs h3{margin:0 0 6px}.docrow{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line,#E6ECEA)}.docrow .tt{font-weight:600}.docrow .dd{font-size:13px;opacity:.8}.btn.sm{padding:6px 10px;font-size:13px;text-decoration:none;white-space:nowrap}
 .lnk{border:0;background:transparent;color:var(--teal-d);font-weight:600;padding:0;text-decoration:underline;text-underline-offset:2px}
 @media (max-width:860px){
   nav.rail{background:var(--navy)}
@@ -231,7 +232,7 @@ var LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACgCAYAAACLz2ctAACj
 'use strict';
 var API = 'https://mkposeidon.com/webhook/contrato';
 var DEMO = location.hash === '#demo';
-var CLAVE = '', QUIEN = 'Alejandro', D = null, VISTA = 'inicio', FILTRO = 'abiertos', BUSCA = '', PERIODO = 3, TIPO_MOV = 'todos';
+var CLAVE = '', QUIEN = 'Alejandro', D = null, VISTA = 'inicio', FILTRO = 'abiertos', BUSCA = '', PERIODO = 3, TIPO_MOV = 'todos', VER_GASTOS = false, BUSCA_G = '', MES_G = 'todos';
 
 var ESTADOS = [
   ['requerimiento_recibido','Requerimiento'],['propuesta_en_elaboracion','Propuesta en elaboración'],['propuesta_enviada','Propuesta enviada'],
@@ -332,7 +333,7 @@ function pillEstado(e){
 
 /* ── navegación ── */
 $$('.nav-b').forEach(function(b){ b.addEventListener('click', function(){ ir(b.dataset.v); }); });
-function ir(v){ VISTA = v; $$('.nav-b').forEach(function(b){ if(b.dataset.v===v) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); }); pintar(); window.scrollTo(0,0); }
+function ir(v){ VISTA = v; VER_GASTOS = false; $$('.nav-b').forEach(function(b){ if(b.dataset.v===v) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); }); pintar(); window.scrollTo(0,0); }
 function pintar(){
   if (!D) return;
   var al = alertas().length; var nav = $('#navAl'); nav.hidden = !al; nav.textContent = al;
@@ -350,8 +351,13 @@ function enlazar(){
   $$('[data-filtro]').forEach(function(el){ el.addEventListener('click', function(){ FILTRO = el.dataset.filtro; pintar(); }); });
   $$('[data-per]').forEach(function(el){ el.addEventListener('click', function(){ PERIODO = parseInt(el.dataset.per,10); pintar(); }); });
   $$('[data-mov]').forEach(function(el){ el.addEventListener('click', function(){ TIPO_MOV = el.dataset.mov; pintar(); }); });
+  $$('#main [data-dborr]').forEach(function(el){ el.addEventListener('click', function(){ abrirPdf(null, null, el.dataset.dborr); }); });
   $$('[data-pdf]').forEach(function(el){ el.addEventListener('click', function(){ abrirPdf(el.dataset.pdf, null); }); });
   var tg = $('#tgPruebas'); if (tg) tg.addEventListener('click', function(){ VER_PRUEBAS = !VER_PRUEBAS; pintar(); });
+  var vg = $('#verGastos'); if (vg) vg.addEventListener('click', function(){ VER_GASTOS = true; pintar(); window.scrollTo(0,0); });
+  var vf = $('#volverFin'); if (vf) vf.addEventListener('click', function(){ VER_GASTOS = false; pintar(); });
+  var bg = $('#buscaG'); if (bg) bg.addEventListener('input', function(){ BUSCA_G = bg.value; var pos = bg.selectionStart; pintar(); var n = $('#buscaG'); if (n) { n.focus(); try { n.setSelectionRange(pos,pos); } catch(e){} } });
+  var mg = $('#mesG'); if (mg) mg.addEventListener('change', function(){ MES_G = mg.value; pintar(); });
   var ex = $('#exportar'); if (ex) ex.addEventListener('click', exportarCsv);
   var s = $('#busca'); if (s) { s.addEventListener('input', function(){ BUSCA = s.value; var pos = s.selectionStart; pintar(); var n = $('#busca'); n.focus(); n.setSelectionRange(pos,pos); }); }
   $$('[data-tip]').forEach(function(el){
@@ -453,20 +459,31 @@ function fichaHtml(c){
   pasos += paso('Reunión', r>=3 || !!c.reunion_fecha, c.reunion_fecha ? esc(cuando(c.reunion_fecha)) : 'Sin reunión registrada', c.estado==='reunion_agendada');
   pasos += paso('Proforma', r>=4 || !!c.proforma_numero, c.proforma_numero ? esc(c.proforma_numero)+' · '+usd(c.proforma_total,true)+' + IVA'+enlace(c.proforma_url,'abrir proforma') : 'Pendiente', c.estado==='proforma_enviada');
   pasos += paso('Pago', !!c.pago_confirmado_en, c.pago_confirmado_en ? 'Confirmado '+esc(cuando(c.pago_confirmado_en)) : 'Sin pago confirmado', false);
-  pasos += paso('Contrato', !!ct && ct.estado==='firmado', ct ? esc(ct.numero)+' · '+esc(textoContrato(ct))+(ct.copia_pdf?' · copia PDF lista':'')+(ct.modo_prueba?' · de prueba':'')+' <button class="lnk" id="stPdf" type="button">'+(ct.estado==='firmado'?'ver firmado':'ver contrato enviado')+'</button>' : 'Aún no se crea', c.estado==='contrato_enviado'||c.estado==='contrato_firmado');
+  pasos += paso('Contrato', !!ct && ct.estado==='firmado', ct ? esc(ct.numero)+' · '+esc(textoContrato(ct))+(ct.copia_pdf?' · copia PDF lista':'')+(ct.modo_prueba?' · de prueba':'') : 'Aún no se crea', c.estado==='contrato_enviado'||c.estado==='contrato_firmado');
   pasos += paso('Cliente activo', c.estado==='activo', c.estado==='activo' ? 'Servicio en marcha' : 'Cuando haya pago y las dos firmas', false);
   var h = '<div class="f-top"><div><h2>'+esc(c._nombre)+'</h2>'+pillEstado(c.estado)+' <span class="tag">'+esc(c.codigo)+' · '+c._dias+' d en este estado'+(c.telefono?' · '+esc(c.telefono):'')+'</span></div><button class="x" id="fx" aria-label="Cerrar">×</button></div>';
   if (cerrado) h += '<p class="dd" style="margin-top:14px">Caso cerrado'+(c.motivo_cierre?': '+esc(c.motivo_cierre):'')+'.</p>';
   if (c._al) h += '<p style="margin:14px 0 0"><span class="pill '+(c._al.nivel==='rojo'?'bad':'warn')+'">'+esc(c._al.texto)+'</span></p>';
   h += '<ol class="steps">'+pasos+'</ol>';
+  h += docsHtml(c);
   h += '<div class="acts"><h3>Acciones</h3>';
   h += '<div class="line"><select id="acEstado" aria-label="Nuevo estado"><option value="">Cambiar estado a…</option>'+CAMBIABLES.filter(function(x){return x[0]!==c.estado;}).map(function(x){return '<option value="'+x[0]+'">'+esc(x[1])+'</option>';}).join('')+'</select><input type="text" id="acMotivo" placeholder="Motivo (si lo cierras)" maxlength="200" aria-label="Motivo"></div>';
-  h += '<div class="line"><button class="btn ghost" id="acBorr" type="button">Ver último borrador generado</button></div>';
-  if (ct && ct.tiene_pdf) h += '<div class="line"><button class="btn ghost" id="acPdf" type="button">Ver PDF del contrato '+esc(ct.numero)+(ct.estado==='firmado'?' (firmado)':' (borrador)')+'</button></div>';
   if (ct && (ct.estado==='enviado' || ct.estado==='firmado_cliente')) h += '<div class="line"><button class="btn ghost" id="acReenviar" type="button">Reenviar link del contrato ('+esc(ct.numero)+')</button></div>';
   h += '<div class="line"><input type="password" id="acClave" autocomplete="new-password" placeholder="Clave de equipo para confirmar" aria-label="Clave de equipo"><button class="btn" id="acAplicar" type="button">Aplicar</button></div>';
   h += '<div class="msg" id="acMsg" role="status" aria-live="polite"></div></div>';
   return h;
+}
+function docsHtml(c){
+  function fila(t, d, a){ return '<div class="docrow"><div><div class="tt">'+esc(t)+'</div><div class="dd">'+d+'</div></div><div>'+a+'</div></div>'; }
+  var f = '';
+  f += fila('Requerimiento', esc(c.req_codigo||'—'), safeUrl(c.req_url) ? '<a class="btn ghost sm" href="'+esc(c.req_url)+'" target="_blank" rel="noopener">Abrir</a>' : '<span class="tag">sin link guardado</span>');
+  f += fila('Propuesta', c.propuesta_enviada_en ? 'Enviada '+esc(cuando(c.propuesta_enviada_en)) : 'Sin fecha de envío registrada', safeUrl(c.propuesta_url) ? '<a class="btn ghost sm" href="'+esc(c.propuesta_url)+'" target="_blank" rel="noopener">Abrir</a>' : '<span class="tag">sin link guardado</span>');
+  f += fila('Proforma', c.proforma_numero ? esc(c.proforma_numero)+' · '+usd(c.proforma_total,true)+' + IVA' : 'Aún no hay', safeUrl(c.proforma_url) ? '<a class="btn ghost sm" href="'+esc(c.proforma_url)+'" target="_blank" rel="noopener">Abrir</a>' : (c.proforma_numero?'<span class="tag">sin link guardado</span>':''));
+  f += fila('Borrador de contrato', c.ultimo_borrador ? 'Último generado '+esc(cuando(c.ultimo_borrador))+' · PDF con marca de agua, solo para revisar' : 'No se ha generado ninguno desde la última actualización', '<button class="btn ghost sm" type="button" data-dborr="'+esc(c.codigo)+'">Abrir último borrador</button>');
+  var cts = (D.contratos||[]).filter(function(x){ return x.caso===c.codigo; });
+  if (!cts.length) f += fila('Contrato para firma', 'Aún no se ha enviado ninguno', '');
+  cts.forEach(function(x){ f += fila('Contrato para firma · '+x.numero, esc(textoContrato(x))+(x.enviado_en?' · enviado '+esc(cuando(x.enviado_en)):'')+(x.modo_prueba?' · de prueba':''), '<button class="btn ghost sm" type="button" data-dpdf="'+esc(x.numero)+'">'+(x.estado==='firmado'?'Abrir firmado':'Abrir contrato')+'</button>'); });
+  return '<div class="docs"><h3>Documentos</h3>'+f+'</div>';
 }
 function enlazarFicha(c){
   $('#fx').addEventListener('click', cerrarFicha);
@@ -487,9 +504,8 @@ function enlazarFicha(c){
     var prev = CLAVE; CLAVE = k;
     api('estado', { caso: c.codigo, estado: est, motivo: mot }).then(function(r){ CLAVE = prev; fin(r, 'Listo: ahora está en "'+NOM[est]+'".'); });
   });
-  var pb = $('#acPdf'); if (pb) pb.addEventListener('click', function(){ abrirPdf(c._ct.numero, msg); });
-  var sp = $('#stPdf'); if (sp) sp.addEventListener('click', function(){ abrirPdf(c._ct.numero, msg); });
-  var bb = $('#acBorr'); if (bb) bb.addEventListener('click', function(){ abrirPdf(null, msg, c.codigo); });
+  $$('[data-dpdf]').forEach(function(el){ el.addEventListener('click', function(){ abrirPdf(el.dataset.dpdf, msg); }); });
+  $$('[data-dborr]').forEach(function(el){ el.addEventListener('click', function(){ abrirPdf(null, msg, el.dataset.dborr); }); });
   var rb = $('#acReenviar');
   if (rb) rb.addEventListener('click', function(){
     var k = pedirClave(); if (!k) return;
@@ -524,7 +540,7 @@ function vContratos(){
   var lista = todos.filter(function(c){ return VER_PRUEBAS || !c.modo_prueba; });
   var nPrueba = todos.filter(function(c){ return c.modo_prueba; }).length;
   var porFirmar = lista.filter(function(c){ return c.estado!=='firmado' && c.estado!=='vencido'; }).length;
-  var h = '<h2 class="sec">Contratos</h2><p class="sub">Estado de cada contrato, quién ha firmado y el PDF.</p>';
+  var h = '<h2 class="sec">Contratos</h2><p class="sub">Contratos enviados para firma (con su estado) y, abajo, los borradores generados para revisar.</p>';
   h += '<div class="kpis">'+kpi('Firmados', String(lista.filter(function(c){return c.estado==='firmado';}).length), 'por ambas partes')+kpi('Por firmar', String(porFirmar), 'esperando a alguien')+kpi('Valor firmado', usd(lista.filter(function(c){return c.estado==='firmado';}).reduce(function(a,c){return a+(Number(c.total)||0);},0)), 'con IVA')+kpi('De prueba', String(nPrueba), VER_PRUEBAS?'visibles':'ocultos')+'</div>';
   if (nPrueba) h += '<div class="fchips" style="margin-top:16px"><button class="chip" id="tgPruebas" aria-pressed="'+VER_PRUEBAS+'">Mostrar contratos de prueba</button></div>';
   if (!lista.length) return h + '<p class="empty">Todavía no hay contratos.</p>';
@@ -537,8 +553,11 @@ function vContratos(){
       '<td class="hide-s sn">Cliente '+(c.firmado_cliente_en?'✓':'—')+' · Poseidón '+(c.firmado_equipo_en?'✓':'—')+'</td>'+
       '<td class="hide-s sn">'+esc(cuando(c.created_at).split(' · ')[0])+'</td>'+
       '<td class="r num">'+(c.total!=null?usd(c.total,true):'—')+'</td>'+
-      '<td class="r">'+'<button class="lnk" data-pdf="'+esc(c.numero)+'">'+(c.estado==='firmado'?'Ver firmado':'Ver contrato')+'</button>'+'</td></tr>';
+      '<td class="r">'+'<button class="lnk" data-pdf="'+esc(c.numero)+'">'+(c.estado==='firmado'?'Abrir firmado':'Abrir contrato')+'</button>'+'</td></tr>';
   }).join('')+'</tbody></table>';
+  var bor = D.casos.filter(function(x){ return x.ultimo_borrador; });
+  h += '<h3 style="margin-top:28px">Borradores para revisar</h3><p class="sub">PDF con marca de agua, sin valor legal. De cada cliente solo queda el más reciente.</p>';
+  h += bor.length ? '<table><thead><tr><th>Cliente</th><th class="hide-s">Generado</th><th class="r">PDF</th></tr></thead><tbody>'+bor.map(function(x){ return '<tr><td><button class="lnk" data-caso="'+esc(x.codigo)+'">'+esc(x._nombre)+'</button><br><span class="tag">'+esc(x.codigo)+'</span></td><td class="hide-s sn">'+esc(cuando(x.ultimo_borrador))+'</td><td class="r"><button class="lnk" data-dborr="'+esc(x.codigo)+'">Abrir borrador</button></td></tr>'; }).join('')+'</tbody></table>' : '<p class="empty">Aún no hay borradores registrados. Genera uno desde el cierre del cliente y aparecerá aquí.</p>';
   return h;
 }
 
@@ -547,12 +566,17 @@ var C_ING = '#0A6CE0', C_GAS = '#E07B00';
 function vFinanzas(){
   var h = '<h2 class="sec">Finanzas</h2><p class="sub">Ingresos y gastos confirmados de Poseidón.</p>';
   if (!D.transacciones) return h + '<p class="empty">No se pudo leer la tabla de movimientos'+(D.error_finanzas?' ('+esc(D.error_finanzas)+')':'')+'. El resto del panel sigue funcionando.</p>';
+  if (VER_GASTOS) return vGastos();
   var ms = meses(6), ing = ms.map(function(m){return sumaMes('ingreso',m);}), gas = ms.map(function(m){return sumaMes('gasto',m);});
   h += '<div class="kpis">'+
     kpi('Ingresos del mes', usd(ing[5]), 'vs '+usd(ing[4])+' el mes pasado')+
     kpi('Gastos del mes', usd(gas[5]), 'vs '+usd(gas[4])+' el mes pasado')+
     kpi('Resultado del mes', usd(ing[5]-gas[5]), ing[5]-gas[5]>=0?'a favor':'en contra', ing[5]-gas[5]>=0?'pos':'neg')+
     kpi('Link de pago sin pagar', String(D.transacciones.filter(function(t){return t.estado==='pendiente' && t.tipo==='ingreso';}).length), 'pendientes de confirmar')+'</div>';
+  var tI = trans().filter(function(t){return t.tipo==='ingreso';}).reduce(function(a,t){return a+(Number(t.monto)||0);},0);
+  var tG = trans().filter(function(t){return t.tipo==='gasto';}).reduce(function(a,t){return a+(Number(t.monto)||0);},0);
+  var nG = trans().filter(function(t){return t.tipo==='gasto';}).length;
+  h += '<div class="block"><h3>Balance general</h3><div class="kpis">'+kpi('Ingresos totales', usd(tI), 'desde el inicio','pos')+kpi('Gastos totales', usd(tG), nG+' gastos registrados')+kpi('Balance', usd(tI-tG), tI-tG>=0?'a favor':'en contra', tI-tG>=0?'pos':'neg')+'</div><div class="fchips" style="margin-top:12px"><button class="chip" id="verGastos" type="button">Revisar todos los gastos ('+nG+')</button></div></div>';
   h += '<div class="block"><h3>Últimos 6 meses</h3><div class="legend"><span><i style="background:'+C_ING+'"></i>Ingresos</span><span><i style="background:'+C_GAS+'"></i>Gastos</span></div>'+barras(ms, ing, gas)+
     '<details class="tv"><summary>Ver como tabla</summary><table><thead><tr><th>Mes</th><th class="r">Ingresos</th><th class="r">Gastos</th><th class="r">Resultado</th></tr></thead><tbody>'+ms.map(function(m,i){return '<tr><td>'+mesTxt(m)+'</td><td class="r num">'+usd(ing[i])+'</td><td class="r num">'+usd(gas[i])+'</td><td class="r num">'+usd(ing[i]-gas[i])+'</td></tr>';}).join('')+'</tbody></table></details></div>';
   var per = [[1,'Este mes'],[3,'3 meses'],[12,'12 meses']];
@@ -566,6 +590,19 @@ function vFinanzas(){
     var esI = t.tipo==='ingreso';
     return '<tr><td class="num">'+esc(String(t.fecha||'').slice(8,10)+'/'+String(t.fecha||'').slice(5,7))+'</td><td>'+esc(t.descripcion||t.subcategoria||'—')+(t.estado!=='confirmado'?' <span class="pill warn">'+esc(t.estado)+'</span>':'')+'<br><span class="tag">'+esc(t.cliente||t.proveedor||'')+'</span></td><td class="hide-s">'+esc(t.categoria||'—')+'</td><td class="r num '+(esI?'pos':'neg')+'">'+(esI?'+':'−')+usd(t.monto,true)+'</td></tr>'; }).join('')+'</tbody></table>' : '<p class="empty">Sin movimientos.</p>';
   return h + '</div>';
+}
+function vGastos(){
+  var todos = trans().filter(function(t){return t.tipo==='gasto';});
+  var mk = {}; todos.forEach(function(t){ mk[String(t.fecha||'').slice(0,7)] = 1; });
+  var keys = Object.keys(mk).sort().reverse();
+  var q = BUSCA_G.trim().toLowerCase();
+  var lista = todos.filter(function(t){ return (MES_G==='todos' || String(t.fecha||'').slice(0,7)===MES_G) && (!q || [t.descripcion,t.categoria,t.subcategoria,t.proveedor,t.registrado_por].join(' ').toLowerCase().indexOf(q)>=0); });
+  var tot = lista.reduce(function(a,t){return a+(Number(t.monto)||0);},0);
+  var h = '<div class="fchips"><button class="chip" id="volverFin" type="button">← Volver a Finanzas</button></div><h2 class="sec">Todos los gastos</h2><p class="sub">Los gastos registrados desde WhatsApp, tal como están en la base de datos.</p>';
+  h += '<div class="kpis">'+kpi('Total mostrado', usd(tot), lista.length+' gastos')+'</div>';
+  h += '<div class="tools" style="margin-top:14px"><input id="buscaG" type="search" placeholder="Buscar por detalle, categoría o proveedor" value="'+esc(BUSCA_G)+'" aria-label="Buscar gasto"> <select id="mesG" aria-label="Mes"><option value="todos">Todos los meses</option>'+keys.map(function(k){return '<option value="'+k+'"'+(k===MES_G?' selected':'')+'>'+mesTxt(k)+'</option>';}).join('')+'</select></div>';
+  h += lista.length ? '<table><thead><tr><th>Fecha</th><th>Detalle</th><th class="hide-s">Categoría</th><th class="hide-s">Registró</th><th class="r">Monto</th></tr></thead><tbody>'+lista.map(function(t){ return '<tr><td class="num">'+esc(String(t.fecha||'').slice(8,10)+'/'+String(t.fecha||'').slice(5,7)+'/'+String(t.fecha||'').slice(2,4))+'</td><td>'+esc(t.descripcion||t.subcategoria||'—')+'<br><span class="tag">'+esc(t.proveedor||'')+'</span></td><td class="hide-s">'+esc(t.categoria||'')+(t.subcategoria?'<br><span class="tag">'+esc(t.subcategoria)+'</span>':'')+'</td><td class="hide-s sn">'+esc(t.registrado_por||'')+'</td><td class="r num">'+usd(t.monto,true)+'</td></tr>'; }).join('')+'</tbody></table>' : '<p class="empty">No hay gastos con ese filtro.</p>';
+  return h;
 }
 function barras(ms, a, b){
   var W=680, H=220, pl=44, pb=26, pt=10, n=ms.length, max=Math.max.apply(null, a.concat(b).concat([1]));
