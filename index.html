@@ -449,6 +449,22 @@ svg[viewBox="0 0 24 24"]{width:18px;height:18px;fill:none;stroke:currentColor;st
   .mv{grid-template-columns:38px minmax(0,1fr);}.mv .mm{grid-column:2;align-items:flex-start;text-align:left;flex-direction:row;gap:8px;align-items:baseline}
 }
 @media (prefers-reduced-motion:reduce){.pipe li.now .nd{animation:none}.cl{transition:none}}
+/* ═══ Tema festivo ═══ */
+#nieve{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:60}
+.hatw{position:relative;display:inline-block;flex:none;line-height:0}
+.hat{position:absolute;pointer-events:none;width:62%;right:-12%;top:-30%;transform:rotate(14deg);filter:drop-shadow(0 2px 3px rgba(0,0,0,.45))}
+.hat svg{width:100%;height:auto;display:block}
+.hero .hatw .hat{width:58%}
+.festivo{display:flex;align-items:center;gap:18px;margin:6px 0 22px;padding:14px 18px;border-radius:18px;border:1px solid rgba(255,255,255,.14);position:relative;overflow:hidden;background:linear-gradient(120deg,rgba(215,38,61,.2),rgba(31,185,138,.12) 60%,rgba(2,212,252,.08))}
+.festivo.nuevo{border-color:rgba(255,215,106,.4);background:linear-gradient(120deg,rgba(255,215,106,.16),rgba(2,212,252,.08))}
+.festivo img{width:76px;height:76px;object-fit:contain;border-radius:14px;flex:none;background:#fff}
+.festivo.nuevo img{width:150px;height:76px;background:#0a0f2c}
+.festivo b{font:700 18px var(--head);display:block;margin-bottom:3px}
+.festivo p{margin:0;color:var(--ink2);font-size:14.5px;line-height:1.45}
+.festivo button{position:absolute;top:8px;right:10px;border:0;background:transparent;color:var(--muted);font-size:15px;padding:4px 8px;border-radius:8px}
+.festivo button:hover{color:#fff;background:rgba(255,255,255,.1)}
+.festbtn{margin-top:8px;width:100%;font-size:12px}
+@media(max-width:860px){.festivo{flex-direction:row;padding:12px}.festivo img{width:56px;height:56px}.festivo.nuevo img{width:96px;height:56px}.festbtn{width:auto}}
 </style>
 </head>
 <body>
@@ -1492,6 +1508,88 @@ demoExtras = function(accion, x){
   return _demo1(accion, x);
 };
 function demo0(){ _demo1('mkt_resumen', {}); }
+
+
+/* ═════════ Tema festivo: Navidad (15 nov – 31 dic) y Año Nuevo (1 – 6 ene) ═════════ */
+var FEST = (function(){
+  var MODO = 'auto'; try { MODO = localStorage.getItem('panel_fest') || 'auto'; } catch(e){}
+  var q = (location.search.match(/[?&]tema=(navidad|nuevo|off)/) || [])[1];
+  function fase(){
+    if (q) return q === 'off' ? null : q;
+    var d = new Date(Date.now() - 5*3600000), m = d.getUTCMonth() + 1, dia = d.getUTCDate();
+    if ((m === 11 && dia >= 15) || m === 12) return 'navidad';
+    if (m === 1 && dia <= 6) return 'nuevo';
+    return null;
+  }
+  var AUTO = fase();
+  function activa(){ return MODO === 'off' ? null : (AUTO || (MODO === 'on' ? 'navidad' : null)); }
+  var FRASES = {
+    navidad: {
+      CEO: ['Cada cliente que confió este año es parte de lo que construiste. Gracias por llevar la visión de Poseidón.','Cerrar el año con equipo, clientes y rumbo claro ya es un gran resultado. Feliz Navidad, Mario.','Lo que se construye con constancia se nota. Que esta Navidad te encuentre con calma y con ganas del próximo año.','Un buen líder también sabe parar un momento a celebrar. Feliz Navidad.'],
+      CIO: ['Gracias por mantener todo en pie, Alejandro: servidores, flujos y sistemas. Feliz Navidad.','Detrás de cada automatización hay tus horas de trabajo. Disfruta estas fiestas.','Que no haya alertas rojas en esta Navidad. Feliz Navidad, Alejandro.','El mejor despliegue del año: una cena en familia. Feliz Navidad.']
+    },
+    nuevo: {
+      CEO: ['Empieza un año nuevo y Poseidón llega más fuerte. Feliz 2027, Mario.','Que 2027 traiga más clientes, más contratos firmados y los mismos buenos socios.','Año nuevo, metas nuevas: tú pones la visión y el equipo la ejecuta. Feliz 2027.'],
+      CIO: ['Feliz 2027, Alejandro. Más automatización, menos tareas manuales.','Que este año los flujos corran solos y las claves estén bien guardadas. Feliz 2027.','Nuevo año, nueva versión de todo. A construir en grande.']
+    }
+  };
+  function frase(f){ var rol = rolActual(), a = FRASES[f][rol] || FRASES[f].CIO; var d = Math.floor((Date.now() - 5*3600000) / 86400000); return a[d % a.length]; }
+  /* nieve / destellos */
+  var cv, cx, parts = [], raf = 0, W = 0, H = 0;
+  function medir(){ W = cv.width = innerWidth; H = cv.height = innerHeight; }
+  function nuevaP(f, ini){ var oro = f === 'nuevo'; return { x: Math.random()*W, y: ini ? Math.random()*H : -10, r: oro ? 1 + Math.random()*2 : 1 + Math.random()*2.6, v: oro ? .35 + Math.random()*.7 : .4 + Math.random()*1, s: Math.random()*6.28, a: .35 + Math.random()*.55, oro: oro }; }
+  function ciclo(){
+    var f = activa(); if (!f) { parar(); return; }
+    cx.clearRect(0,0,W,H);
+    for (var i = 0; i < parts.length; i++) { var p = parts[i]; p.y += p.v; p.s += .012; p.x += Math.sin(p.s) * .45;
+      if (p.y > H + 10) parts[i] = p = nuevaP(f, false);
+      cx.globalAlpha = p.a * (p.oro ? (.55 + .45 * Math.sin(p.s * 3)) : 1);
+      cx.fillStyle = p.oro ? '#ffd76a' : '#ffffff'; cx.beginPath(); cx.arc(p.x, p.y, p.r, 0, 6.283); cx.fill(); }
+    raf = requestAnimationFrame(ciclo);
+  }
+  function parar(){ cancelAnimationFrame(raf); raf = 0; if (cv) { cv.remove(); cv = null; } parts = []; }
+  function nieve(){
+    var f = activa(); if (!f || matchMedia('(prefers-reduced-motion: reduce)').matches) { parar(); return; }
+    if (!cv) { cv = document.createElement('canvas'); cv.id = 'nieve'; cv.setAttribute('aria-hidden', 'true'); document.body.appendChild(cv); cx = cv.getContext('2d'); medir(); addEventListener('resize', function(){ if (cv) medir(); }); }
+    var n = innerWidth < 700 ? 35 : 70; parts = []; for (var i = 0; i < n; i++) parts.push(nuevaP(f, true));
+    if (!raf) raf = requestAnimationFrame(ciclo);
+  }
+  document.addEventListener('visibilitychange', function(){ if (document.hidden) { cancelAnimationFrame(raf); raf = 0; } else if (cv && !raf) raf = requestAnimationFrame(ciclo); });
+  /* gorro de Santa sobre el logo */
+  var GORRO = '<svg viewBox="0 0 100 70" aria-hidden="true"><path d="M8 58C14 22 40 4 78 12c-14 4-18 16-16 30z" fill="#d7263d"/><path d="M78 12c8 2 14 8 12 16-6-4-10-4-14 2z" fill="#b01b2e"/><circle cx="88" cy="26" r="9" fill="#fff"/><path d="M2 54c10-9 78-14 96-2 2 6-4 12-12 9C60 56 30 56 8 66 0 64-2 58 2 54z" fill="#fff"/></svg>';
+  function decorar(){
+    var f = activa();
+    $$('img[data-logo], .hero > img').forEach(function(im){
+      var w = im.parentNode; var ya = w.classList && w.classList.contains('hatw');
+      if (f !== 'navidad') { if (ya) { var g = w.querySelector('.hat'); if (g) g.remove(); } return; }
+      if (!ya) { w = document.createElement('span'); w.className = 'hatw'; im.parentNode.insertBefore(w, im); w.appendChild(im); }
+      if (!w.querySelector('.hat')) { var s = document.createElement('span'); s.className = 'hat'; s.innerHTML = GORRO; w.appendChild(s); }
+    });
+  }
+  function tarjeta(){
+    var f = activa(); var viejo = $('#festivo'); if (viejo) viejo.remove();
+    if (!f || !$('.hero')) return;
+    try { if (sessionStorage.getItem('fest_cerrado') === f) return; } catch(e){}
+    var c = document.createElement('div'); c.id = 'festivo'; c.className = 'festivo ' + f;
+    c.innerHTML = '<img src="brand/festivo/' + (f === 'navidad' ? 'santa' : '2027') + '.svg" alt="" onerror="this.remove()">' +
+      '<div><b>' + (f === 'navidad' ? '¡Feliz Navidad!' : '¡Feliz Año Nuevo 2027!') + '</b><p>' + esc(frase(f)) + '</p></div>' +
+      '<button type="button" aria-label="Cerrar mensaje">✕</button>';
+    c.querySelector('button').addEventListener('click', function(){ try { sessionStorage.setItem('fest_cerrado', f); } catch(e){} c.remove(); });
+    $('.hero').insertAdjacentElement('afterend', c);
+  }
+  function boton(){
+    var ft = $('.rail-foot'); if (!ft || $('#btnFest')) return;
+    var b = document.createElement('button'); b.id = 'btnFest'; b.type = 'button'; b.className = 'btn ghost festbtn'; ft.appendChild(b);
+    b.addEventListener('click', function(){ MODO = MODO === 'auto' ? 'off' : MODO === 'off' ? 'on' : 'auto'; try { localStorage.setItem('panel_fest', MODO); } catch(e){} aplicar(); pintar(); });
+    etiqueta();
+  }
+  function etiqueta(){ var b = $('#btnFest'); if (!b) return; b.textContent = MODO === 'off' ? '❄ Tema festivo: apagado' : MODO === 'on' ? '❄ Tema festivo: encendido' : '❄ Tema festivo: automático'; b.hidden = !AUTO && MODO !== 'on' && MODO !== 'off' && !q; }
+  function aplicar(){ document.documentElement.dataset.fest = activa() || ''; nieve(); decorar(); etiqueta(); }
+  return { aplicar: aplicar, decorar: decorar, tarjeta: tarjeta, boton: boton, activa: activa };
+})();
+var _pintarFest = pintar;
+pintar = function(){ _pintarFest.apply(this, arguments); FEST.boton(); FEST.aplicar(); FEST.tarjeta(); };
+FEST.aplicar();
 
 })();
 </script>
