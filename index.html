@@ -209,6 +209,10 @@ html{color-scheme:dark}
 nav.rail{background:linear-gradient(180deg,#02060d,#081428);border-right:1px solid var(--line2)}
 .nav-b[aria-current=page]{background:linear-gradient(90deg,rgba(0,158,231,.30),rgba(0,158,231,.05));box-shadow:inset 3px 0 0 #02d4fc}
 .nav-b .dot{background:var(--orange)}
+.nav-ext{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:9px 10px;border-radius:8px;color:#B7C4D9;font-weight:500;text-decoration:none;margin-top:6px;border:1px solid rgba(2,212,252,.28)}
+.nav-ext:hover,.nav-ext:focus-visible{background:rgba(2,212,252,.12);color:#fff;outline:0}
+.nav-ext span{margin-left:auto;color:#02d4fc}
+@media(max-width:860px){.nav-ext{width:auto;white-space:nowrap;margin-top:0}}
 .banner{color:var(--gold);border:1px solid rgba(254,212,5,.3)}
 .hero{border:1px solid var(--line);background:radial-gradient(700px 320px at 92% 0%,rgba(0,158,231,.38),transparent 60%),radial-gradient(500px 260px at 0% 120%,rgba(230,104,43,.18),transparent 60%),linear-gradient(180deg,#0a2a55,#071b3a 60%,#050f22)}
 .kpis{gap:14px;border:0}
@@ -287,6 +291,7 @@ svg text{fill:var(--muted)}
     <button class="nav-b" data-v="proveedores">Proveedores <span class="dot" id="navPv" hidden></span></button>
     <button class="nav-b" data-v="equipo">Equipo</button>
     <button class="nav-b" data-v="gerencial">Gerencial</button>
+    <a class="nav-ext" href="https://chat.mkposeidon.com/app/login" target="_blank" rel="noopener noreferrer" title="Abrir Chatwoot (CRM) en una pestaña nueva">Chatwoot (CRM) <span aria-hidden="true">↗</span></a>
     <div class="rail-foot"><span id="gen">—</span><br><button class="btn ghost" id="btnRef" type="button">Actualizar</button> <button class="btn ghost" id="btnOut" type="button">Salir</button></div>
   </nav>
   <main id="main" tabindex="-1"></main>
